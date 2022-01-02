@@ -6,8 +6,8 @@ L = 54;
 F = 210;
 T = 100;
 
-%lambda1 = 10;
-%lambdastar = 10;
+nodes = [[0,0.3];[0.18,0.28];[0.19, 0.05];[0.41,0.39];[0.6,0.21];[1,0.21];[0.91,0.4];[0.8,0.4];[0.39,0.51];[0.59,0.59];[0.6,0.6];[0.42,0.79];[0.76, 0.86];[0.92,0.98];[0.95,0.85]];
+
 rho = 5;
 
 % make random variables
@@ -26,14 +26,15 @@ A = (helpDistri<(p/2))*(-1) + (helpDistri>=(p/2) & helpDistri<p)*(1) + (helpDist
 omega_t = eye(L);
 omega_l = eye(T);
 
-R = getR(L,F);
+R = getR(L,F,nodes);
+scatter(nodes(:,1),nodes(:,2))
 
 Y = omega_t*(R*Z + R*A + V);
 
-K = 12; % num iterations
+K = 70; % num iterations
 
-lambda1 = 100%max(max(abs(R'*V)));
-lambdastar = 100%(sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
+lambda1 = 10%max(max(abs(R'*V)));
+lambdastar = 10%(sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
 
 % init P and Q at random
 % X = LxT = PQ'
@@ -42,7 +43,7 @@ P = randn(L,rho);%5*R*A*Q;%randn(L,rho);
 
 
 
-obj_value(1) = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1)
+obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1)
 
 
 
@@ -79,7 +80,7 @@ for k = 1:K
         for t = 1:T
             A_new(f, t)  = sign(R(:,f)'*ys(:,t))*max(0, abs(R(:,f)'*ys(:,t)) - lambda1) / norm(R(:,f),2);
             if isnan(A_new(f,t))
-                "nan"
+                error("nan values in A. maybe 0 columns in R?")
             end
         end
         A_new(f,:);
@@ -96,9 +97,15 @@ for k = 1:K
         Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t*P)*P'*omega_t*(Y(:,t) - R*A(:,t));
     end
 
-    obj_value(k+1) = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1)
+    obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1)
 end
 
-plot(obj_value)
+plot(obj_value, "--")
 set(gca, 'YScale', 'log')
+
+
+
+function [obj_value] = getObj(Y,P,Q,R,A, lambdastar, lambda1)
+    obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1);
+end
 
