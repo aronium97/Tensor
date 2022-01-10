@@ -46,14 +46,14 @@ P = randn(L,rho);%5*R*A*Q;%randn(L,rho);
 
 
 
-obj_value = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bsca);
-plot(obj_value, "--")
+obj_value_bsca = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bsca);
+plot(obj_value_bsca, "--")
 set(gca, 'YScale', 'log')
 
 hold on
 
-obj_value = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bcd);
-plot(obj_value, "--")
+obj_value_bcd = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bcd);
+plot(obj_value_bcd, "--")
 set(gca, 'YScale', 'log')
 
 legend("BSCA", "BATCH BCD")
