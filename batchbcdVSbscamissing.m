@@ -4,7 +4,7 @@ clear all
 
 L = 54;
 F = 210;
-T = 1000;
+T = 100;
 
 nodes = [[0,0.3];[0.18,0.28];[0.19, 0.05];[0.41,0.39];[0.6,0.21];[1,0.21];[0.91,0.4];[0.8,0.4];[0.39,0.51];[0.59,0.59];[0.6,0.6];[0.42,0.79];[0.76, 0.86];[0.92,0.98];[0.95,0.85]];
 
@@ -33,7 +33,7 @@ Y = omega_t*(R*Z + R*A + V);
 K_bsca = 100; % num iterations bcsa algorithm
 K_bcd = 10; % num iterations batch bcd algorithm
 
-lambda1 = 10 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
+lambda1 = 200 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
 lambdastar = 10 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
 
 mu_soft_bsca = 200;  % gut: 10,10,200
@@ -191,10 +191,10 @@ end
 
 
 
-
-
+% how should we measure?
 function [obj_value] = getObj(Y,P,Q,R,A, lambdastar, lambda1)
     obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1);
+    %obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2;
 end
 
 
