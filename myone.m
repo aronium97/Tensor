@@ -5,14 +5,14 @@ format long;
 %test
 
 % parameters
-N = 200;
-K = 400;
-I = 400; % X: N*K, D: N*I, S: I*K
+N = 54;
+K = 4000;
+I = 210; % X: N*K, D: N*I, S: I*K
 rho_real = 5;
 rho = 3; % rank of X; P: N*rho, Q: rho*K
 
 % number of samples in Monte Carlo simulations
-Sample = 20;
+Sample = 2;
 
 % generate the data
 D = randn(N, I);
@@ -43,10 +43,10 @@ initial_Q = randn(rho, K);
 initial_S = zeros(I,K);
 
 
-MaxIter_bSCA = 50;
+MaxIter_bSCA = 20;
 
-result = FUN_admm(initial_P, initial_Q, initial_S, MaxIter_bSCA, D, Y, lambda, mu, rho)
-plot(result)
+%result = FUN_admm(initial_P, initial_Q, initial_S, MaxIter_bSCA, D, Y, lambda, mu, rho)
+%plot(result)
 
 
 hold on
