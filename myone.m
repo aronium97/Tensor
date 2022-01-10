@@ -2,6 +2,8 @@ clear; clc;
 
 format long;
 
+%test
+
 % parameters
 N = 200;
 K = 400;
