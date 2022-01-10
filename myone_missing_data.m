@@ -68,10 +68,13 @@ for k = 1:K
         % entweder diese formel, oder wirkluich die inverse des vektors!
         
         r = ATA.*A(:,t) - D_snake_t'*(D_snake_t*A(:,t) - b);
-        
-        mu_soft = 100;
+
+        mu_soft = 1000;
         Bx = (ATA.^-1).*soft_operator(r,mu_soft);
-        A_new(:,t) = A(:,t) + 0.01*(Bx -A(:,t));
+
+        gamma = min(1,max(0,-(D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1)) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) )));
+
+        A_new(:,t) = A(:,t) + gamma*(Bx -A(:,t));
     end
 
     A = A_new;
