@@ -13,7 +13,8 @@ rho = 5;
 % make random variables
 sigma = 10^-2;
 r = 5;
-p = 0.005;
+p = 0.05;
+pi_missing_data = 0.7; % missing data pi, 1= no missing data
 
 % make v_l_t
 V = randn(L,T).*sigma^2;
@@ -23,21 +24,40 @@ Z = U*w;
 helpDistri = rand(F,T);
 A = (helpDistri<(p/2))*(-1) + (helpDistri>=(p/2) & helpDistri<p)*(1) + (helpDistri>=p)*0;
 
-omega_t = eye(L);
-omega_l = eye(T);
+for t = 1:T
+    yAvailability = rand(L,1) < pi_missing_data;
+    omega_t(:,:,t) = eye(L).*yAvailability;
+
+    for l = 1:L
+        omega_l(t,t,l) = yAvailability(l);
+    end
+end
+
+
+for t = 1:T
+    yAvailability = ones(L,1);
+    omega_t1(:,:,t) = eye(L).*yAvailability;
+
+    for l = 1:L
+        omega_l1(t,t,l) = yAvailability(l);
+    end
+end
+
+
 
 R = getR(L,F,nodes);
 
-Y = omega_t*(R*Z + R*A + V);
+Y = (R*Z + R*A + V);
+
 
 K_bsca = 100; % num iterations bcsa algorithm
 K_bcd = 10; % num iterations batch bcd algorithm
 
-lambda1 = 200 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
-lambdastar = 10 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
+lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
+lambdastar = 1 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
 
-mu_soft_bsca = 200;  % gut: 10,10,200
-mu_soft_bcd = 200;
+mu_soft_bsca = 1;  
+mu_soft_bcd = 10;
 
 % init P and Q at random
 % X = LxT = PQ'
@@ -56,7 +76,21 @@ obj_value_bcd = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t, omega_l, lambdastar, la
 plot(obj_value_bcd, "--")
 set(gca, 'YScale', 'log')
 
-legend("BSCA", "BATCH BCD")
+hold on
+
+obj_value_bsca = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bsca);
+plot(obj_value_bsca, "--")
+set(gca, 'YScale', 'log')
+
+hold on
+
+obj_value_bcd = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bcd);
+plot(obj_value_bcd, "--")
+set(gca, 'YScale', 'log')
+
+
+
+legend("BSCA", "BATCH BCD", "BSCA1", "BATCH BCD1")
 
 
 
@@ -82,7 +116,7 @@ function obj_value = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, l
                         sum2 = sum2 + R(:,f_s)*A(f_s, t);
                     end
                     % hole expression:
-                    ys(:,t) = omega_t*(Y(:,t) -  P*Q(t,:)' - sum2);
+                    ys(:,t) = omega_t(:,:,t)*(Y(:,t) -  P*Q(t,:)' - sum2);
                 else
                     % sum 1:
                     sum1 = 0;
@@ -95,7 +129,7 @@ function obj_value = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, l
                         sum2 = sum2 + R(:,f_s)*A(f_s, t);
                     end
                     % hole expression:
-                    ys(:,t) = omega_t*(Y(:,t) -  P*Q(t,:)' - sum1 - sum2);
+                    ys(:,t) = omega_t(:,:,t)*(Y(:,t) -  P*Q(t,:)' - sum1 - sum2);
                 end
             end
     
@@ -111,12 +145,12 @@ function obj_value = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, l
     
         % update the nominal traffic subspace:
         for l = 1:L
-            P(l,:) = inv(lambdastar*eye(rho) + Q'*omega_l*Q) * Q'*omega_l*(Y(l,:)' - A'*R(l,:)');
+            P(l,:) = inv(lambdastar*eye(rho) + Q'*omega_l(:,:,l)*Q) * Q'*omega_l(:,:,l)*(Y(l,:)' - A'*R(l,:)');
         end
     
         % update the projection coefficients
         for t = 1:T
-            Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t*P)*P'*omega_t*(Y(:,t) - R*A(:,t));
+            Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t(:,:,t)*P)*P'*omega_t(:,:,t)*(Y(:,t) - R*A(:,t));
         end
     
         obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1)
@@ -146,9 +180,9 @@ function obj_value = bsca_missing_data(P, Q, A, K, R, Y, omega_t, omega_l, lambd
         % START:
         %------------------------
         for t = 1:T
-            P_snake_t = omega_t*P*Q(:,t);
-            D_snake_t = omega_t*R;
-            Y_snake_t = omega_t*Y(:,t);
+            P_snake_t = omega_t(:,:,t)*P*Q(:,t);
+            D_snake_t = omega_t(:,:,t)*R;
+            Y_snake_t = omega_t(:,:,t)*Y(:,t);
         
             b = -P_snake_t - Y_snake_t;
             % A = D_snake_t
@@ -156,12 +190,15 @@ function obj_value = bsca_missing_data(P, Q, A, K, R, Y, omega_t, omega_l, lambd
         
             % formula from yang
             ATA = diag(D_snake_t'*D_snake_t);
+            ATA(ATA==0) = 10^-10; % will be removed bny soft operator anyway
             
             r = ATA.*A(:,t) - D_snake_t'*(D_snake_t*A(:,t) - b);
-    
-            mu_soft = 100;
 
-            Bx = (ATA.^-1).*soft_operator(r,mu_soft);
+            Bx = -(ATA.^-1).*soft_operator(r,mu_soft);
+
+            if (sum(Bx) == 0)
+                warning("Bx sum is zero")
+            end
     
             gamma = min(1,max(0,-(D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1)) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) )));
     
@@ -177,12 +214,12 @@ function obj_value = bsca_missing_data(P, Q, A, K, R, Y, omega_t, omega_l, lambd
     
         % update the nominal traffic subspace:
         for l = 1:L
-            P(l,:) = inv(lambdastar*eye(rho) + Q'*omega_l*Q) * Q'*omega_l*(Y(l,:)' - A'*R(l,:)');
+            P(l,:) = inv(lambdastar*eye(rho) + Q'*omega_l(:,:,l)*Q) * Q'*omega_l(:,:,l)*(Y(l,:)' - A'*R(l,:)');
         end
     
         % update the projection coefficients
         for t = 1:T
-            Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t*P)*P'*omega_t*(Y(:,t) - R*A(:,t));
+            Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t(:,:,t)*P)*P'*omega_t(:,:,t)*(Y(:,t) - R*A(:,t));
         end
     
         obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)
@@ -193,8 +230,8 @@ end
 
 % how should we measure?
 function [obj_value] = getObj(Y,P,Q,R,A, lambdastar, lambda1)
-    obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1);
-    %obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2;
+    %obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1);
+    obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2;
 end
 
 
