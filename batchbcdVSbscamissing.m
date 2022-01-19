@@ -14,7 +14,7 @@ rho = 5;
 sigma = 10^-2;
 r = 5;
 p = 0.05;
-pi_missing_data = 0.7; % missing data pi, 1= no missing data
+pi_missing_data = 0.8; % missing data pi, 1= no missing data
 
 % make v_l_t
 V = randn(L,T).*sigma^2;
@@ -51,7 +51,7 @@ Y = (R*Z + R*A + V);
 
 
 K_bsca = 100; % num iterations bcsa algorithm
-K_bcd = 10; % num iterations batch bcd algorithm
+K_bcd = 4; % num iterations batch bcd algorithm
 
 lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
 lambdastar = 1 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
@@ -66,43 +66,45 @@ P = randn(L,rho);%5*R*A*Q;%randn(L,rho);
 
 
 
-obj_value_bsca = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bsca);
-plot(obj_value_bsca, "--")
+[obj_value_bsca, time_value_bsca] = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bsca);
+plot(time_value_bsca,obj_value_bsca, "--")
 set(gca, 'YScale', 'log')
 
 hold on
 
-obj_value_bcd = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bcd);
-plot(obj_value_bcd, "--")
+[obj_value_bcd, time_value_bsd] = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft_bcd);
+plot(time_value_bsd, obj_value_bcd, "--")
 set(gca, 'YScale', 'log')
 
 hold on
 
-obj_value_bsca = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bsca);
-plot(obj_value_bsca, "--")
+[obj_value_bsca, time_value_bsca] = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bsca);
+plot(time_value_bsca, obj_value_bsca, "--")
 set(gca, 'YScale', 'log')
 
 hold on
 
-obj_value_bcd = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bcd);
-plot(obj_value_bcd, "--")
+[obj_value_bcd, time_value_bsd] = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bcd);
+plot(time_value_bsd, obj_value_bcd, "--")
 set(gca, 'YScale', 'log')
 
 
+ylabel("obj value")
+xlabel("seconds")
+legend("BSCA (p=" + string(pi_missing_data) + ")", "BATCH BCD (p=" + string(pi_missing_data) + ")", "BSCA (p=1)", "BATCH BCD (p=1)")
 
-legend("BSCA", "BATCH BCD", "BSCA1", "BATCH BCD1")
 
 
-
-function obj_value = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft)
+function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft)
 
     T = size(Y,2);
     L = size(P,1);
     F = size(R,2);
     rho = size(Q,2);
 
-
+    tic;
     obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)
+    timeValue(1) = toc;
 
     for k = 1:K
         % update the anomaly map
@@ -153,7 +155,9 @@ function obj_value = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, l
             Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t(:,:,t)*P)*P'*omega_t(:,:,t)*(Y(:,t) - R*A(:,t));
         end
     
-        obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1)
+        elapsedTime = toc;
+        obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1) 
+        timeValue(k+1) = elapsedTime + timeValue(k); 
     end
 
 end
@@ -161,20 +165,20 @@ end
 
 
 
-
-
-
-
-function obj_value = bsca_missing_data(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft)
+function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, omega_l, lambdastar, lambda1, mu_soft)
 
     T = size(Y,2);
     L = size(P,1);
     rho = size(Q,2);
 
-
+    tic;
     obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)
+    timeValue(1) = toc;
 
     for k = 1:K
+    
+        tic;
+
         % update the anomaly map
         Q = Q';
         % START:
@@ -222,7 +226,9 @@ function obj_value = bsca_missing_data(P, Q, A, K, R, Y, omega_t, omega_l, lambd
             Q(t,:) = inv(lambdastar*eye(rho) + P'*omega_t(:,:,t)*P)*P'*omega_t(:,:,t)*(Y(:,t) - R*A(:,t));
         end
     
+        elapsedTime = toc;
         obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)
+        timeValue(k+1) = elapsedTime + timeValue(k);
     end
 end
 
