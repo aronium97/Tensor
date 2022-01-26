@@ -14,7 +14,7 @@ rho = 5;
 sigma = 10^-6;
 r = 2;
 p = 0.005;
-pi_missing_data = 0.8; % missing data pi, 1= no missing data
+pi_missing_data = 1; % missing data pi, 1= no missing data
 
 % make v_l_t
 V = randn(L,T).*sigma^2;
@@ -50,8 +50,8 @@ R = getR(L,F,nodes);
 Y = (R*Z + R*A + V);
 
 
-K_bsca = 100; % num iterations bcsa algorithm
-K_bcd = 4; % num iterations batch bcd algorithm
+K_bsca = 1400; % num iterations bcsa algorithm
+K_bcd = 30; % num iterations batch bcd algorithm
 
 lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
 lambdastar = 1 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
@@ -78,15 +78,15 @@ set(gca, 'YScale', 'log')
 
 hold on
 
-[obj_value_bsca, time_value_bsca] = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bsca);
-plot(time_value_bsca, obj_value_bsca, "--")
-set(gca, 'YScale', 'log')
+%[obj_value_bsca, time_value_bsca] = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bsca);
+%plot(time_value_bsca, obj_value_bsca, "--")
+%set(gca, 'YScale', 'log')
 
-hold on
+%hold on
 
-[obj_value_bcd, time_value_bsd] = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bcd);
-plot(time_value_bsd, obj_value_bcd, "--")
-set(gca, 'YScale', 'log')
+%[obj_value_bcd, time_value_bsd] = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bcd);
+%plot(time_value_bsd, obj_value_bcd, "--")
+%set(gca, 'YScale', 'log')
 
 
 ylabel("obj value")
@@ -135,7 +135,7 @@ function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, 
             end
     
             for t = 1:T
-                A_new(f, t)  = sign(R(:,f)'*ys(:,t))*max(0, abs(R(:,f)'*ys(:,t)) - mu_soft) / norm(R(:,f),2);
+                A_new(f, t)  = sign(R(:,f)'*ys(:,t))*min(1,max(0, abs(R(:,f)'*ys(:,t)) - mu_soft)) / norm(R(:,f),2);
                 if isnan(A_new(f,t))
                     error("nan values in A. maybe 0 columns in R?")
                 end
