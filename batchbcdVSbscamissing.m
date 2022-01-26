@@ -11,9 +11,9 @@ nodes = [[0,0.3];[0.18,0.28];[0.19, 0.05];[0.41,0.39];[0.6,0.21];[1,0.21];[0.91,
 rho = 5;
 
 % make random variables
-sigma = 10^-2;
-r = 5;
-p = 0.05;
+sigma = 10^-6;
+r = 2;
+p = 0.005;
 pi_missing_data = 0.8; % missing data pi, 1= no missing data
 
 % make v_l_t
@@ -56,8 +56,8 @@ K_bcd = 4; % num iterations batch bcd algorithm
 lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
 lambdastar = 1 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
 
-mu_soft_bsca = 1;  
-mu_soft_bcd = 10;
+mu_soft_bsca = lambda1;  
+mu_soft_bcd = lambda1;
 
 % init P and Q at random
 % X = LxT = PQ'
@@ -105,20 +105,19 @@ function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, 
     tic;
     obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1)
     timeValue(1) = toc;
-
     for k = 1:K
         % update the anomaly map
         for f = 1:F
             ys = [];
             for t = 1:T
                 if f == 1
+                    % sum 1:
+                    sum1 = 0;
                     % sum 2:
                     sum2 = 0;
                     for f_s = (f+1):F
                         sum2 = sum2 + R(:,f_s)*A(f_s, t);
                     end
-                    % hole expression:
-                    ys(:,t) = omega_t(:,:,t)*(Y(:,t) -  P*Q(t,:)' - sum2);
                 else
                     % sum 1:
                     sum1 = 0;
@@ -129,10 +128,10 @@ function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, 
                     sum2 = 0;
                     for f_s = (f+1):F
                         sum2 = sum2 + R(:,f_s)*A(f_s, t);
-                    end
-                    % hole expression:
-                    ys(:,t) = omega_t(:,:,t)*(Y(:,t) -  P*Q(t,:)' - sum1 - sum2);
+                    end   
                 end
+                % hole expression:
+                ys(:,t) = omega_t(:,:,t)*(Y(:,t) -  P*Q(t,:)' - sum1 - sum2);
             end
     
             for t = 1:T
@@ -236,8 +235,8 @@ end
 
 % how should we measure?
 function [obj_value] = getObj(Y,P,Q,R,A, lambdastar, lambda1)
-    %obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1);
-    obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2;
+    obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + sum(sum(Q.^2))) + lambda1*sum(sum(abs(A)));
+    %obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2;
 end
 
 
