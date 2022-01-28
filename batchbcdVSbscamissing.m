@@ -52,11 +52,11 @@ R = getR(L,F,nodes);
 Y = (R*Z + R*A + V);
 
 
-K_bsca = 2000; % num iterations bcsa algorithm
+K_bsca = 200; % num iterations bcsa algorithm
 K_bcd = 20; % num iterations batch bcd algorithm
 
 lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
-lambdastar = 10 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
+lambdastar = 1 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
 
 mu_soft_bsca = lambda1;  
 mu_soft_bcd = lambda1;
@@ -106,10 +106,11 @@ function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, 
 
     h = waitbar(0,'Bitte Warten, batch bcd');
 
-    tic;
     obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)
-    timeValue(1) = toc;
+    timeValue(1) = 0;
+
     for k = 1:K
+        tic;
         % update the anomaly map
         for f = 1:F
             ys = [];
@@ -179,9 +180,10 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
 
     h = waitbar(0,'Bitte Warten, bsca');
 
-    tic;
+    
     obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)
-    timeValue(1) = toc;
+
+    timeValue(1) = 0;
 
     for k = 1:K
     
