@@ -196,9 +196,9 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
         for t = 1:T
             P_snake_t = omega_t(:,:,t)*P*Q(:,t);
             D_snake_t = omega_t(:,:,t)*R;
-            Y_snake_t = omega_t(:,:,t)*Y(:,t);
+            Y_snake_t = -omega_t(:,:,t)*Y(:,t);
         
-            b = - P_snake_t + Y_snake_t;
+            b = - (P_snake_t + Y_snake_t);
             % A = D_snake_t
             % x = A(:,t)
         
