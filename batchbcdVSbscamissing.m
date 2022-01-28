@@ -206,16 +206,11 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
             %    warning("Bx sum is zero")
             %end
     
-            %gamma = max(0,-(D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1)) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) ));
             if not((D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) == 0)
                 gamma = min(1,max(0,-((D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1))) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) )));
             else
-                gamma = 0;
+                gamma = 0; % will be set to zero anyway
             end
-                %gamma
-            %if isnan(-((D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1))) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) ))
-            %    "S"
-            %end
             A_new(:,t) = A(:,t) + gamma*(Bx -A(:,t));
         end
     
