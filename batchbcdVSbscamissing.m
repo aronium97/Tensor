@@ -4,7 +4,7 @@ clear all
 
 L = 54;
 F = 210;
-T = 100;
+T = 10;
 
 nodes = [[0,0.3];[0.18,0.28];[0.19, 0.05];[0.41,0.39];[0.6,0.21];[1,0.21];[0.91,0.4];[0.8,0.4];[0.39,0.51];[0.59,0.59];[0.6,0.6];[0.42,0.79];[0.76, 0.86];[0.92,0.98];[0.95,0.85]];
 
@@ -55,8 +55,8 @@ Y = (R*Z + R*A + V);
 K_bsca = 1000; % num iterations bcsa algorithm
 K_bcd = 20; % num iterations batch bcd algorithm
 
-lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
-lambdastar = 1 % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
+lambda1 = 1; % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
+lambdastar = 1; % batch bcd: (sqrt(T) + sqrt(F)*sqrt(pi))*sigma%norm(V,1);
 
 mu_soft_bsca = lambda1;  
 mu_soft_bcd = lambda1;
@@ -80,20 +80,9 @@ set(gca, 'YScale', 'log')
 
 hold on
 
-%[obj_value_bsca, time_value_bsca] = bsca_missing_data(P, Q, A, K_bsca, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bsca);
-%plot(time_value_bsca, obj_value_bsca, "--")
-%set(gca, 'YScale', 'log')
-
-%hold on
-
-%[obj_value_bcd, time_value_bsd] = batch_bcd(P, Q, A, K_bcd, R, Y, omega_t1, omega_l1, lambdastar, lambda1, mu_soft_bcd);
-%plot(time_value_bsd, obj_value_bcd, "--")
-%set(gca, 'YScale', 'log')
-
-
 ylabel("obj value")
 xlabel("seconds")
-legend("BSCA (p=" + string(pi_missing_data) + ")", "BATCH BCD (p=" + string(pi_missing_data) + ")", "BSCA (p=1)", "BATCH BCD (p=1)")
+legend("BSCA (p=" + string(pi_missing_data) + ", lambdaStar=" + string(lambdastar) + ")", "BATCH BCD (p=" + string(pi_missing_data) + ", lambdaStar=" + string(lambdastar) + ")")
 
 
 
@@ -106,7 +95,7 @@ function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, 
 
     h = waitbar(0,'Bitte Warten, batch bcd');
 
-    obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)
+    obj_value(1) = getObj(omega_l,Y,P,Q,R,A, lambdastar, lambda1, Z, false);
     timeValue(1) = 0;
 
     for k = 1:K
@@ -160,13 +149,16 @@ function [obj_value, timeValue] = batch_bcd(P, Q, A, K, R, Y, omega_t, omega_l, 
         end
     
         elapsedTime = toc;
-        obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1) 
+        obj_value(k+1) = getObj(omega_l,Y,P,Q,R,A, lambdastar, lambda1, Z, false);%0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + norm(Q,'fro').^2) + lambda1*norm(A,1) 
         timeValue(k+1) = elapsedTime + timeValue(k); 
     
         waitbar(k/K)  
     end
     
     close(h);
+    
+    fprintf("has batch bcd optimal value found:")
+    dummy = getObj(omega_l,Y,P,Q,R,A, lambdastar, lambda1, Z, true);
 end
 
 
@@ -181,7 +173,7 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
     h = waitbar(0,'Bitte Warten, bsca');
 
     
-    obj_value(1) = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)
+    obj_value(1) = getObj(omega_l,Y,P,Q,R,A, lambdastar, lambda1, Z, false);
 
     timeValue(1) = 0;
 
@@ -208,7 +200,7 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
             
             r = ATA.*A(:,t) - D_snake_t'*(D_snake_t*A(:,t) - b);
 
-            Bx = -(ATA.^-1).*soft_operator(r,mu_soft);
+            Bx = (ATA.^-1).*soft_operator(r,mu_soft);
 
             %if (sum(Bx) == 0)
             %    warning("Bx sum is zero")
@@ -245,27 +237,32 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
         end
     
         elapsedTime = toc;
-        obj_value(k+1) = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z);
+        obj_value(k+1) = getObj(omega_l,Y,P,Q,R,A, lambdastar, lambda1, Z, false);
         timeValue(k+1) = elapsedTime + timeValue(k);
 
         waitbar(k/K)  
     end
     close(h);
+
 end
 
 
 
 % how should we measure?
-function [obj_value] = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)
-    obj_value = 0.5*sum(sum((Y-P*Q'-R*A).^2)) + lambdastar/2*(sum(sum(P.^2)) + sum(sum(Q.^2))) + lambda1*sum(sum(abs(A)));
-%     if norm(Y-P*Q'-R*A,'fro').^2 > lambdastar
-%         warning("lambdastar not fullfilled")
-%         norm(Y-P*Q'-R*A,'fro').^2
-%         
-%     end
-    %"z diff:"
-    %sum(sum(Z-P*Q'))
-    %obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2;
+function [obj_value] = getObj(omega_l, Y,P,Q,R,A, lambdastar, lambda1, Z, check)
+    
+    
+    %obj_value = 0.5*sum(sum((Y-P*Q'-R*A).^2)) + lambdastar/2*(sum(sum(P.^2)) + sum(sum(Q.^2))) + lambda1*sum(sum(abs(A)));
+    obj_value = lambdastar/2*(sum(sum(P.^2)) + sum(sum(Q.^2))) + lambda1*sum(sum(abs(A)));
+    for l = 1:size(omega_l,3)
+        obj_value = obj_value + 0.5*sum(sum((Y(l,:)*omega_l(:,:,l)-P(l,:)*Q'*omega_l(:,:,l)-R(l,:)*A*omega_l(:,:,l)).^2));
+    end
+    if check && norm(Y-P*Q'-R*A,'fro').^2 > lambdastar
+        warning("lambdastar not fullfilled")
+        norm(Y-P*Q'-R*A,'fro').^2 
+    elseif check && norm(Y-P*Q'-R*A,'fro').^2 <= lambdastar
+        fprintf(newline + "---- lambdastar fullfilled ----" + newline)
+    end
 end
 
 
