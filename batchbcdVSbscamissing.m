@@ -52,7 +52,7 @@ R = getR(L,F,nodes);
 Y = (R*Z + R*A + V);
 
 
-K_bsca = 200; % num iterations bcsa algorithm
+K_bsca = 1000; % num iterations bcsa algorithm
 K_bcd = 20; % num iterations batch bcd algorithm
 
 lambda1 = 1 % am ehesten mit mu_soft connected % batch bcd: max(max(abs(R'*V)));
@@ -198,7 +198,7 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
             D_snake_t = omega_t(:,:,t)*R;
             Y_snake_t = omega_t(:,:,t)*Y(:,t);
         
-            b = -P_snake_t - Y_snake_t;
+            b = - P_snake_t + Y_snake_t;
             % A = D_snake_t
             % x = A(:,t)
         
@@ -215,7 +215,7 @@ function [obj_value, timeValue] = bsca_missing_data(P, Q, A, K, R, Y, omega_t, o
             %end
     
             %gamma = max(0,-(D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1)) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) ));
-            if (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) == 0
+            if not((D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) == 0)
                 gamma = min(1,max(0,-((D_snake_t*A(:,t) - b)'*D_snake_t*(Bx - A(:,t)) + mu_soft*(norm(Bx, 1) - norm(A(:,t),1))) / ( (D_snake_t*(Bx - A(:,t)))' * (D_snake_t*(Bx - A(:,t))) )));
             else
                 gamma = 0;
@@ -257,7 +257,7 @@ end
 
 % how should we measure?
 function [obj_value] = getObj(Y,P,Q,R,A, lambdastar, lambda1, Z)
-    obj_value = 0.5*norm(Y-P*Q'-R*A,'fro').^2 + lambdastar/2*(norm(P,'fro').^2 + sum(sum(Q.^2))) + lambda1*sum(sum(abs(A)));
+    obj_value = 0.5*sum(sum((Y-P*Q'-R*A).^2)) + lambdastar/2*(sum(sum(P.^2)) + sum(sum(Q.^2))) + lambda1*sum(sum(abs(A)));
 %     if norm(Y-P*Q'-R*A,'fro').^2 > lambdastar
 %         warning("lambdastar not fullfilled")
 %         norm(Y-P*Q'-R*A,'fro').^2
